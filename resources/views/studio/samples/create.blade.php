@@ -7,7 +7,7 @@
         <div>
             <p class="eyebrow">Studio · Import</p>
             <h1>Importer des sons</h1>
-            <p class="lede">Glissez vos fichiers : titre, BPM, tonalité et catégorie sont devinés depuis le nom. L’aperçu public (22 kHz mono, 30 s max.) est fabriqué dans votre navigateur — l’original n’est jamais exposé.</p>
+            <p class="lede">Glissez vos fichiers : titre, BPM, tonalité et catégorie sont devinés depuis le nom. L’aperçu public (22 kHz mono, 30 s max., marqué d’un tag sonore) est fabriqué dans votre navigateur — l’original n’est jamais exposé, et chaque fichier vendu porte la licence de son acheteur.</p>
         </div>
     </div>
 
@@ -15,7 +15,9 @@
          data-store-url="{{ route('studio.samples.store') }}"
          data-max-files="{{ config('soundbank.max_files_per_upload') }}"
          data-formats="{{ implode(',', config('soundbank.audio_formats')) }}"
-         data-preview-seconds="{{ config('soundbank.preview_seconds') }}">
+         data-preview-seconds="{{ config('soundbank.preview_seconds') }}"
+         data-tag-url="{{ config('soundbank.preview_tag_url') }}"
+         data-tag-interval="{{ config('soundbank.preview_tag_interval') }}">
 
         <div class="panel">
             <p class="panel-title">Réglages par défaut <button type="button" class="btn btn-sm btn-ghost" data-apply-defaults>Appliquer à tous</button></p>

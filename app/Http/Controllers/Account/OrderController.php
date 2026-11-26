@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Account;
 use App\Http\Controllers\Controller;
 use App\Models\LibraryItem;
 use App\Models\Order;
+use App\Services\AudioWatermark;
 use App\Support\ZipStream;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
@@ -40,7 +41,7 @@ class OrderController extends Controller
     /**
      * Toute la commande dans une archive ZIP, rangée par artiste.
      */
-    public function zip(Request $request, Order $order): StreamedResponse
+    public function zip(Request $request, Order $order, AudioWatermark $watermark): StreamedResponse
     {
         $this->authorizeOrder($request, $order);
         $items = $this->libraryItems($order);
@@ -48,7 +49,7 @@ class OrderController extends Controller
 
         $disk = Storage::disk('local');
 
-        return response()->streamDownload(function () use ($items, $disk): void {
+        return response()->streamDownload(function () use ($items, $disk, $watermark): void {
             $zip = new ZipStream(fopen('php://output', 'wb'));
             $used = [];
 
@@ -67,7 +68,16 @@ class OrderController extends Controller
                 }
 
                 $used[$name] = true;
-                $zip->addFile($disk->path($sample->file_path), $name);
+                $original = $disk->path($sample->file_path);
+
+                if ($watermark->supports($original)) {
+                    $marked = $watermark->toTemporaryFile($original, $item);
+                    $zip->addFile($marked, $name);
+                    @unlink($marked);
+                } else {
+                    $zip->addFile($original, $name);
+                }
+
                 $item->increment('download_count', 1, ['last_downloaded_at' => now()]);
             }
 

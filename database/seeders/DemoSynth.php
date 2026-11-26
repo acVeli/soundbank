@@ -56,18 +56,54 @@ class DemoSynth
     }
 
     /**
-     * Aperçu : 22 kHz, 30 s max.
+     * Aperçu : 22 kHz, 30 s max., avec le même tag « bip-bip » que l'importeur
+     * du navigateur (au début puis toutes les 4 s).
      *
      * @param  list<float>  $samples
      * @return list<float>
      */
     public function preview(array $samples): array
     {
+        $rate = intdiv(self::RATE, 2);
+        $tag = $this->tag($rate);
         $out = [];
         $max = min(count($samples), self::RATE * 30);
 
         for ($i = 0; $i < $max; $i += 2) {
             $out[] = $samples[$i];
+        }
+
+        $out = array_pad($out, max(count($out), count($tag) + (int) (0.15 * $rate)), 0.0);
+        $level = 0.4 * max(0.3, max(array_map('abs', $out)));
+
+        for ($start = (int) (0.02 * $rate); $start < count($out); $start += 4 * $rate) {
+            foreach ($tag as $k => $value) {
+                if (isset($out[$start + $k])) {
+                    $out[$start + $k] += $value * $level;
+                }
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * @return list<float>
+     */
+    private function tag(int $rate): array
+    {
+        $out = [];
+
+        foreach ([[1318.51, 0.09], [1975.53, 0.11]] as $index => [$freq, $length]) {
+            for ($i = 0, $n = (int) ($length * $rate); $i < $n; $i++) {
+                $t = $i / $rate;
+                $env = min(1, $t / 0.004) * exp(-$t * 18);
+                $out[] = (sin(2 * M_PI * $freq * $t) + 0.3 * sin(4 * M_PI * $freq * $t)) * $env * 0.8;
+            }
+
+            if ($index === 0) {
+                array_push($out, ...array_fill(0, (int) (0.035 * $rate), 0.0));
+            }
         }
 
         return $out;

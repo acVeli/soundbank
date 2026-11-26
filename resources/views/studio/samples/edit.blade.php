@@ -30,7 +30,10 @@
         </div>
     </div>
 
-    <form method="POST" action="{{ route('studio.samples.update', $sample) }}" enctype="multipart/form-data" class="panel" data-preview-replacer>
+    <form method="POST" action="{{ route('studio.samples.update', $sample) }}" enctype="multipart/form-data" class="panel" data-preview-replacer
+          data-preview-seconds="{{ config('soundbank.preview_seconds') }}"
+          data-tag-url="{{ config('soundbank.preview_tag_url') }}"
+          data-tag-interval="{{ config('soundbank.preview_tag_interval') }}">
         @csrf
         @method('PUT')
 
@@ -86,7 +89,7 @@
         <hr class="divider">
 
         <p class="panel-title">Aperçu public</p>
-        <p class="hint" style="margin-bottom: 10px">Choisissez un fichier audio : l’aperçu (22 kHz mono, 30 s max.) et la forme d’onde sont recalculés dans votre navigateur.</p>
+        <p class="hint" style="margin-bottom: 10px">Choisissez un fichier audio : l’aperçu (22 kHz mono, 30 s max., avec tag sonore) et la forme d’onde sont recalculés dans votre navigateur.</p>
         <input type="file" accept="audio/*" data-source aria-label="Fichier source de l’aperçu">
         <input type="file" name="preview" hidden>
         <input type="hidden" name="waveform">

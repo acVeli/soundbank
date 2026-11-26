@@ -1,12 +1,12 @@
+import { buildPreview, loadTag } from './preview';
 import { computePeaks, drawWave } from './waveform';
 
 /**
  * Importeur du studio : glisser-déposer de fichiers audio, pré-remplissage
  * (titre, BPM, tonalité, catégorie devinés depuis le nom), analyse dans le
- * navigateur (durée, forme d'onde, aperçu 22 kHz mono de 30 s max.), puis
- * envoi fichier par fichier avec progression.
+ * navigateur (durée, forme d'onde, aperçu 22 kHz mono tagué de 30 s max.),
+ * puis envoi fichier par fichier avec progression.
  */
-const PREVIEW_RATE = 22050;
 const MAX_ANALYSE_BYTES = 160 * 1024 * 1024;
 
 const CATEGORY_HINTS = {
@@ -72,6 +72,7 @@ export function initUploader() {
     const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
     const items = [];
     let audioContext = null;
+    const tagPromise = loadTag(root.dataset.tagUrl);
 
     const categoryOptions = [...template.content.querySelectorAll('[data-field="category_id"] option')]
         .filter((o) => o.value)
@@ -237,50 +238,11 @@ export function initUploader() {
     }
 
     async function renderPreview(buffer) {
-        const seconds = Math.min(buffer.duration, Number(root.dataset.previewSeconds || 30));
-        const frames = Math.max(1, Math.ceil(seconds * PREVIEW_RATE));
-        const offline = new OfflineAudioContext(1, frames, PREVIEW_RATE);
-        const source = offline.createBufferSource();
-        const gain = offline.createGain();
-        source.buffer = buffer;
-        source.connect(gain).connect(offline.destination);
-
-        if (buffer.duration > seconds) {
-            gain.gain.setValueAtTime(1, Math.max(0, seconds - 1.5));
-            gain.gain.linearRampToValueAtTime(0, seconds);
-        }
-
-        source.start(0);
-        const rendered = await offline.startRendering();
-
-        return encodeWav(rendered.getChannelData(0), PREVIEW_RATE);
-    }
-
-    function encodeWav(samples, rate) {
-        const bytes = new ArrayBuffer(44 + samples.length * 2);
-        const view = new DataView(bytes);
-        const text = (offset, value) => [...value].forEach((c, i) => view.setUint8(offset + i, c.charCodeAt(0)));
-
-        text(0, 'RIFF');
-        view.setUint32(4, 36 + samples.length * 2, true);
-        text(8, 'WAVE');
-        text(12, 'fmt ');
-        view.setUint32(16, 16, true);
-        view.setUint16(20, 1, true);
-        view.setUint16(22, 1, true);
-        view.setUint32(24, rate, true);
-        view.setUint32(28, rate * 2, true);
-        view.setUint16(32, 2, true);
-        view.setUint16(34, 16, true);
-        text(36, 'data');
-        view.setUint32(40, samples.length * 2, true);
-
-        for (let i = 0; i < samples.length; i++) {
-            const s = Math.max(-1, Math.min(1, samples[i]));
-            view.setInt16(44 + i * 2, s < 0 ? s * 0x8000 : s * 0x7fff, true);
-        }
-
-        return new Blob([bytes], { type: 'audio/wav' });
+        return buildPreview(buffer, {
+            seconds: Number(root.dataset.previewSeconds || 30),
+            interval: Number(root.dataset.tagInterval || 4),
+            tag: await tagPromise,
+        });
     }
 
     function upload(item) {
@@ -448,6 +410,7 @@ export function initPreviewReplacer() {
     const previewInput = form.querySelector('input[name="preview"]');
     const waveInput = form.querySelector('input[name="waveform"]');
     const status = form.querySelector('[data-replace-status]');
+    const tagPromise = loadTag(form.dataset.tagUrl);
 
     source?.addEventListener('change', async () => {
         const file = source.files[0];
@@ -461,48 +424,18 @@ export function initPreviewReplacer() {
         try {
             const ctx = new (window.AudioContext || window.webkitAudioContext)();
             const buffer = await ctx.decodeAudioData(await file.arrayBuffer());
-            const seconds = Math.min(buffer.duration, 30);
-            const offline = new OfflineAudioContext(1, Math.ceil(seconds * PREVIEW_RATE), PREVIEW_RATE);
-            const node = offline.createBufferSource();
-            node.buffer = buffer;
-            node.connect(offline.destination);
-            node.start(0);
-            const rendered = await offline.startRendering();
-            const samples = rendered.getChannelData(0);
-            const blob = await new Promise((resolve) => resolve(wav(samples)));
+            const blob = await buildPreview(buffer, {
+                seconds: Number(form.dataset.previewSeconds || 30),
+                interval: Number(form.dataset.tagInterval || 4),
+                tag: await tagPromise,
+            });
             const transfer = new DataTransfer();
             transfer.items.add(new File([blob], 'preview.wav', { type: 'audio/wav' }));
             previewInput.files = transfer.files;
             waveInput.value = JSON.stringify(computePeaks(buffer, 120));
-            status.textContent = 'Nouvel aperçu prêt : enregistrez pour l’appliquer.';
+            status.textContent = 'Nouvel aperçu tagué prêt : enregistrez pour l’appliquer.';
         } catch {
             status.textContent = 'Ce fichier ne peut pas être lu par le navigateur. Essayez un WAV ou un MP3.';
         }
     });
-
-    function wav(samples) {
-        const bytes = new ArrayBuffer(44 + samples.length * 2);
-        const view = new DataView(bytes);
-        const text = (o, v) => [...v].forEach((c, i) => view.setUint8(o + i, c.charCodeAt(0)));
-        text(0, 'RIFF');
-        view.setUint32(4, 36 + samples.length * 2, true);
-        text(8, 'WAVE');
-        text(12, 'fmt ');
-        view.setUint32(16, 16, true);
-        view.setUint16(20, 1, true);
-        view.setUint16(22, 1, true);
-        view.setUint32(24, PREVIEW_RATE, true);
-        view.setUint32(28, PREVIEW_RATE * 2, true);
-        view.setUint16(32, 2, true);
-        view.setUint16(34, 16, true);
-        text(36, 'data');
-        view.setUint32(40, samples.length * 2, true);
-
-        for (let i = 0; i < samples.length; i++) {
-            const s = Math.max(-1, Math.min(1, samples[i]));
-            view.setInt16(44 + i * 2, s < 0 ? s * 0x8000 : s * 0x7fff, true);
-        }
-
-        return new Blob([bytes], { type: 'audio/wav' });
-    }
 }

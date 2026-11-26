@@ -33,7 +33,9 @@ return [
         'local' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),
-            'serve' => true,
+            // Les originaux ne sortent que par LibraryController (achat vérifié) :
+            // aucune route automatique, même signée.
+            'serve' => false,
             'throw' => false,
             'report' => false,
         ],

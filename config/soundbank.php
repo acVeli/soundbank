@@ -27,6 +27,15 @@ return [
 
     'preview_seconds' => 30,
 
+    /*
+    | Tag sonore mixé dans chaque aperçu : au début, puis toutes les N secondes.
+    | Sans fichier, un « bip-bip » est synthétisé. Pour une voix de marque,
+    | déposez un court audio dans public/ et indiquez son URL (ex. /audio/tag.mp3).
+    */
+    'preview_tag_url' => env('SOUNDBANK_PREVIEW_TAG_URL'),
+
+    'preview_tag_interval' => 4,
+
     'max_files_per_upload' => 50,
 
     /*

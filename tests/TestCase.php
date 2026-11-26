@@ -51,7 +51,7 @@ abstract class TestCase extends BaseTestCase
     protected function sample(User $artist, array $attributes = []): Sample
     {
         $path = 'samples/'.$artist->id.'/'.Str::uuid().'.wav';
-        Storage::disk('local')->put($path, 'RIFF-fake-audio');
+        Storage::disk('local')->put($path, $this->wavBytes());
 
         return Sample::query()->create([
             'artist_id' => $artist->id,
@@ -70,6 +70,16 @@ abstract class TestCase extends BaseTestCase
             'published_at' => now(),
             ...$attributes,
         ]);
+    }
+
+    /**
+     * Petit WAV valide (8 bits mono). Taille impaire par défaut pour éprouver le bourrage.
+     */
+    protected function wavBytes(string $data = "\x80\x90\xA0"): string
+    {
+        return 'RIFF'.pack('V', 36 + strlen($data)).'WAVE'
+            .'fmt '.pack('VvvVVvv', 16, 1, 1, 8000, 8000, 1, 8)
+            .'data'.pack('V', strlen($data)).$data;
     }
 
     protected function pack(User $artist, int $priceCents = 1000): Pack

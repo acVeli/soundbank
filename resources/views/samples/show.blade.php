@@ -36,7 +36,7 @@
                     </button>
                     <div class="wave wave-lg" style="flex: 1"><canvas data-peaks='@json($sample->peaks())'></canvas></div>
                 </div>
-                <p class="hint" style="margin-top: 12px">Aperçu compressé (22 kHz mono{{ $sample->duration_ms > 30000 ? ', 30 premières secondes' : '' }}). Le fichier livré est l’original {{ strtoupper($sample->file_format) }}.</p>
+                <p class="hint" style="margin-top: 12px">Aperçu compressé et tagué (22 kHz mono{{ $sample->duration_ms > 30000 ? ', 30 premières secondes' : '' }}). Le fichier livré est l’original {{ strtoupper($sample->file_format) }}, sans tag.</p>
             </div>
 
             <dl class="specs" style="margin-top: 24px">

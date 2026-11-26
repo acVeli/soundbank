@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Account;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\LibraryItem;
+use App\Services\AudioWatermark;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -43,7 +44,10 @@ class LibraryController extends Controller
         ]);
     }
 
-    public function download(Request $request, LibraryItem $libraryItem): StreamedResponse
+    /**
+     * Téléchargement de l'original, filigrané au nom de l'acheteur (WAV / AIFF).
+     */
+    public function download(Request $request, LibraryItem $libraryItem, AudioWatermark $watermark): StreamedResponse
     {
         abort_unless($libraryItem->user_id === $request->user()->getKey(), 404);
 
@@ -51,8 +55,21 @@ class LibraryController extends Controller
         abort_if($sample === null || ! Storage::disk('local')->exists($sample->file_path), 404, 'Fichier introuvable : contactez le support.');
 
         $libraryItem->increment('download_count', 1, ['last_downloaded_at' => now()]);
+        $path = Storage::disk('local')->path($sample->file_path);
 
-        return Storage::disk('local')->download($sample->file_path, $sample->downloadName());
+        return response()->streamDownload(
+            function () use ($watermark, $path, $libraryItem): void {
+                $out = fopen('php://output', 'wb');
+                $watermark->write($path, $libraryItem, $out);
+                fclose($out);
+            },
+            $sample->downloadName(),
+            [
+                'Content-Type' => Storage::disk('local')->mimeType($sample->file_path) ?: 'application/octet-stream',
+                'Content-Length' => (string) $watermark->length($path, $libraryItem),
+                'Cache-Control' => 'private, no-store',
+            ],
+        );
     }
 
     public function license(Request $request, LibraryItem $libraryItem): View
