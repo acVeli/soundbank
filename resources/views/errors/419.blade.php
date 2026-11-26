@@ -1,0 +1,1 @@
+@include('errors.layout', ['code' => 419, 'message' => $exception->getMessage() && 419 !== 500 && strlen($exception->getMessage()) < 140 ? $exception->getMessage() : 'Session expirée : rechargez la page et recommencez.'])

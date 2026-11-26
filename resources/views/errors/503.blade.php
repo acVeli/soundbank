@@ -1,0 +1,1 @@
+@include('errors.layout', ['code' => 503, 'message' => $exception->getMessage() && 503 !== 500 && strlen($exception->getMessage()) < 140 ? $exception->getMessage() : 'Maintenance en cours, revenez dans quelques minutes.'])

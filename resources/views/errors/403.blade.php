@@ -1,0 +1,1 @@
+@include('errors.layout', ['code' => 403, 'message' => $exception->getMessage() && 403 !== 500 && strlen($exception->getMessage()) < 140 ? $exception->getMessage() : 'Accès refusé à cette zone de la grille.'])

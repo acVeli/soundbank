@@ -1,0 +1,1 @@
+@include('errors.layout', ['code' => 429, 'message' => $exception->getMessage() && 429 !== 500 && strlen($exception->getMessage()) < 140 ? $exception->getMessage() : 'Trop de requêtes. Patientez un instant.'])
